@@ -1,0 +1,78 @@
+---
+title: "Lab10"
+author: "Emily Shepherd"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, include=FALSE}
+setwd("/Users/burrisfaculty/Desktop/DSCode/DSCI605")
+library(ggplot2)
+library(plotly)
+library(shiny)
+library(dplyr)
+
+veg <- read.csv('kalimati_tarkari_dataset.csv')
+veg$Date <- as.Date(veg$Date)
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#Basic Plot
+ui1 <- fluidPage(
+  selectizeInput(
+    inputId = "produce", 
+    label = "Select Produce", 
+    choices = unique(sort(veg$Commodity)), 
+    selected = "",
+    multiple = FALSE,
+    
+  ),
+  plotlyOutput(outputId = "p")
+)
+
+server1 <- function(input, output, ...) {
+  output$p <- renderPlotly({
+    plot_ly(veg, x = ~Date, y = ~Average) %>%
+      filter(Commodity %in% input$produce) %>%
+      group_by(Commodity) %>%
+      add_lines()
+  })
+}
+
+shinyApp(ui1, server1)
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#TRY WITH GGPLOT
+
+ui <- fluidPage(
+  selectInput(inputId = 'Produce', 
+              label = 'Select Produce', 
+              choices = unique(sort(veg$Commodity))),
+  plotOutput(outputId = 'p')
+ 
+)
+
+server <- function(input, output, session) {
+  output$p <- renderPlot({
+    veg %>%
+      plot_ly(veg, x = ~Date, y = ~Average)%>%
+      filter(Commodity %in% input$Produce) %>%
+      group_by(Commodity) %>%
+    ggplot(aes(x = Date, y = Average))+
+      ggtitle(paste("Average Price of", input$Produce, 'Over Time in India') )+
+      geom_line(color = 'navy') + 
+      xlab('Date') +
+      ylab('Average Price per Kilogram') +
+      theme(plot.title = (element_text(color = 'cadetblue', size = 24, face = 'bold')),
+          axis.title.x = element_text(color = 'cadetblue', size = 20, face = 'bold'),
+          axis.title.y = element_text(color = 'cadetblue', size = 20, face = 'bold'),
+          text = element_text(size=16, face = 'bold'),panel.background = element_rect(fill = 'white', color = 'darkgrey'),
+          panel.grid.major = element_line(color = 'darkgray', linetype = 'dotted'),
+          plot.background = element_rect(fill = "lightgrey")
+          )
+  })
+}
+
+shinyApp(ui, server)
+```

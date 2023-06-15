@@ -1,0 +1,41 @@
+---
+title: "DSCI605_M8_Lab7"
+author: "Emily Shepherd"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, include=FALSE, echo = FALSE, warning=FALSE}
+setwd("/Users/burrisfaculty/Desktop/DSCode/DSCI605")
+library(ggplot2)
+library(dplyr)
+library(hrbrthemes)
+library(tidyr)
+library(forecast)
+library(lubridate)
+
+#import and wrangle data
+p.data <- read.table('sstoi_pa.txt', header = T)
+p.df.time <- p.data %>% subset(YR == 73)
+p.df.time$YR <- as.factor(p.df.time$YR)
+p.df.time$MON <- as.character(p.df.time$MON)
+p.df.time$MON <- ifelse(nchar(p.df.time$MON) == 1, paste('0', p.df.time$MON),p.df.time$MON)
+p.df.time$Date <- paste('19',p.df.time$YR)
+p.df.time$Date <- paste(p.df.time$Date, '-', p.df.time$MON, '-01')
+p.df.time$Date <- gsub(" ", "", p.df.time$Date)
+p.df.time$Date <-as.factor(p.df.time$Date)
+p.df.time$Date <- as_date(p.df.time$Date)                   
+
+#Create visualization using ggplot
+time_plot <- ggplot(p.df.time, aes(x = Date, y = ANOM)) + geom_line() + geom_point() + geom_smooth(col = 'lightblue4', se = F) +
+  ggtitle('Pacific Ocean Sea Surface Temperatures--1973') + xlab("") + ylab("Temperature Anomoly (F)") + theme_minimal() +
+  scale_x_date(date_breaks = "1 month",date_labels = "%b-%Y") + theme(axis.text.x=element_text(angle=60, hjust=1), text = element_text(size = 12),
+                                                                      plot.background = element_rect(fill = 'lightblue1'),
+                                                                      panel.background = element_rect(fill = 'white'),
+                                                                      panel.grid.minor = element_blank()) 
+
+```
+
+```{r, echo=FALSE,warning=FALSE}
+time_plot
+```

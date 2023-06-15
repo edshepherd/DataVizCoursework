@@ -1,0 +1,261 @@
+---
+title: "M6_Lab"
+author: "Emily Shepherd"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(usdata)
+library(ggrepel)
+setwd("/Users/burrisfaculty/Desktop/DSCode/DSCI605")
+```
+
+```{r, include = FALSE, echo=FALSE}
+#Load the data and clean. Remove missing data.
+
+#Read Data and Check
+crime.data <- read.csv("crimerate.csv")
+income.data<-read.csv("finalincomebystate.csv")
+unemployment.data<-read.csv("unemployment_county.csv")
+#Manage Data and Combine Into 1 DataFrame
+clean.crime<-subset(crime.data, State != "UnitedStatesTotal")
+clean.crime <-clean.crime[with(clean.crime,order(State,Year)),]
+clean.income<-subset(income.data, State != "UnitedStates")
+clean.income<-subset(clean.income, State != "D.C.")
+clean.combine<-clean.income
+clean.combine$crime <- clean.crime$rate
+unemployment.data$Labor.Force<-as.numeric(unemployment.data$Labor.Force)
+unemployment.data$Unemployed <- as.numeric(unemployment.data$Unemployed)
+unemployment.data$Employed <-as.numeric(unemployment.data$Employed)
+unemployment.data$Unemployment.Rate <- unemployment.data$Unemployment.Rate/100
+#Use math to fill in missing Labor.Force values
+unemployment.data$Labor.Force<- unemployment.data$Unemployed/unemployment.data$Unemployment.Rate
+clean.unemploy = unemployment.data
+clean.unemploy <-unemployment.data[,c("State", "Labor.Force", "Unemployed", "Year")]
+clean.unemploy <- na.omit(clean.unemploy)
+clean.unemploy$State <- as.factor(clean.unemploy$State)
+df2 <- clean.unemploy %>% group_by(State,Year) %>% 
+  summarise(sum_labor=sum(Labor.Force),
+            sum_emp= sum(Unemployed),
+            .groups = 'drop') %>%
+  as.data.frame()
+clean.unemploy <- df2
+clean.unemploy$State <- abbr2state(clean.unemploy$State)
+clean.unemploy <-clean.unemploy[with(clean.unemploy,order(State,Year)),]
+clean.unemploy$U_Rate = clean.unemploy$sum_emp/clean.unemploy$sum_labor
+clean.unemploy$State = as.factor(clean.unemploy$State)
+#Missing States and Years for certain state
+#Need to delete from clean.comb
+clean.combine <- subset(clean.combine, State != "Delaware")
+clean.combine <- subset(clean.combine, State != "New Jersey")
+clean.combine <- subset(clean.combine, State != "Connecticut")
+clean.combine <-clean.combine[-c(135:143),]
+clean.combine <-clean.combine[-c(355:358),]
+clean.combine <-clean.combine[-c(471:480),]
+#Reorder so matches other data frame
+clean.combine <-clean.combine[with(clean.combine,order(State,Year)),]
+all.three <- clean.combine
+all.three$unemploy <- clean.unemploy$U_Rate
+range(all.three$income)
+```
+
+```{r, echo=FALSE, include = FALSE}
+#Exploring visualizations
+plot1 <- ggplot(all.three, aes(x = income, y = crime)) + geom_point()
+plot1
+plot2 <- ggplot(all.three, aes(x = unemploy, y = crime)) + geom_point()
+plot2
+plot3 <- ggplot(all.three, aes(x = Year, y = income)) + geom_point()
+plot3
+plot4 <- ggplot(all.three) + geom_boxplot(aes(x = as.factor(Year), y = income)) + theme_bw()
+plot4
+plot5 <- ggplot(all.three) + geom_boxplot(aes(x = as.factor(Year), y = unemploy)) + theme_bw()
+plot5
+plot6 <- ggplot(all.three) + geom_boxplot(aes(x = as.factor(Year), y = crime)) + theme_bw()
+plot6
+plot7 <- ggplot(all.three) + geom_histogram(aes(x = income)) + theme_bw()
+plot7
+plot8 <- ggplot(all.three) + geom_histogram(aes(x = crime)) + theme_bw()
+plot8
+```
+
+```{r, echo=FALSE, include=FALSE, warnings = FALSE}
+all.three$level <- as.factor(ifelse(all.three$income<47338, 'low',
+                                    ifelse(all.three$income<62338, 'medium','high')))
+all.three$employ <- as.factor(ifelse(all.three$unemploy<.05, 'ideal','high'))
+
+plot9 <- ggplot(all.three) + geom_boxplot(aes(x = employ, y = crime)) + theme_bw()
+plot9
+plot10<- ggplot(all.three) + geom_boxplot(aes(x = level, y = crime)) + theme_bw()
+plot10
+
+plot11 <- ggplot(all.three) + geom_point(aes(x = income, y = crime, color = employ))
+plot11
+
+#Focus on 2007, 2008, 2009
+df2007 <- subset(all.three, Year == 2007)
+df2008 <- subset(all.three, Year == 2008)
+df2009 <- subset(all.three, Year == 2009)
+df2018 <- subset(all.three, Year == 2018)
+df2014 <- subset(all.three, Year == 2014)
+
+plot12 <- ggplot(df2007, aes(x = unemploy, y = crime)) + geom_point(aes(color = level)) + 
+  geom_text(label = df2007$State, nudge_x = 0.003, nudge_y = 10, check_overlap = TRUE)
+plot12
+plot13 <- ggplot(df2008, aes(x = unemploy, y = crime)) + geom_point(aes(color = level)) + 
+  geom_text(label = df2008$State, nudge_x = 0.003, nudge_y = 10, check_overlap = TRUE)
+plot13
+plot14 <- ggplot(df2009, aes(x = unemploy, y = crime)) + geom_point(aes(color = level)) + 
+  geom_text(label = df2009$State, nudge_x = 0.003, nudge_y = 10, check_overlap = TRUE)
+plot14
+plot15 <- ggplot(df2014, aes(x = income, y = crime)) + geom_point(aes(size = unemploy)) + 
+  geom_text_repel(
+    aes(label = State),
+    color = "black",
+    size = 9/.pt, # font size 9 pt
+    point.padding = 0.2, 
+    box.padding = 0.6,
+    min.segment.length = 0,
+    max.overlaps = 20,
+    seed = 7654)  + geom_smooth(method  = 'lm', na.rm = TRUE, se = TRUE) +theme_classic()
+plot15
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
+plot19 <- ggplot(df2007, aes(x = income, y = crime)) + geom_point(aes(color = employ), size = 4) + 
+  geom_text_repel(
+    aes(label = State),
+    color = "black",
+    size = 9/.pt, # font size 9 pt
+    point.padding = 0.2, 
+    box.padding = 0.6,
+    min.segment.length = 0,
+    max.overlaps = 40,
+    seed = 7654)  + geom_smooth(method  = 'lm', na.rm = TRUE, se = TRUE) +
+  ggtitle("Crime Rate vs Income by State (2007)", ) +
+  xlab("Average Annual Income") +
+  ylab('Crime Rate per 100000 People') + labs(colour = 'Unemployment') +
+  scale_color_manual(values = c( "#E7B800", "#00AFBB"), labels=c('HIGH: 5% or more', 'IDEAL: Less than 5%')) + 
+  theme(legend.title = element_text(face = "bold"),
+        plot.background =  element_rect(fill = 'white'),
+        panel.background =element_rect(fill = 'white'),
+        legend.key = element_rect(fill = 'white'),
+        legend.background = element_rect(colour = 'black'),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(colour = 'lightgrey', linetype = 'dotted'),
+        axis.line = element_line(),
+        axis.text = element_text(colour = 'black'),
+        legend.position = 'bottom',
+        plot.title = element_text(color="black", size=16, face="bold.italic"),
+        axis.title.x = element_text(color="black", size=12, face="bold"),
+        axis.title.y = element_text(color="black", size=12, face="bold")) 
+ 
+
+plot19
+
+plot18 <- ggplot(df2009, aes(x = income, y = crime)) + geom_point(aes(color = employ, size = 4),size = 4) + 
+  geom_text_repel(
+    aes(label = State),
+    color = "black",
+    size = 9/.pt, # font size 9 pt
+    point.padding = 0.2, 
+    box.padding = 0.6,
+    min.segment.length = 0,
+    max.overlaps = 20,
+    seed = 7654)  + geom_smooth(method  = 'lm', na.rm = TRUE, se = TRUE) +
+  ggtitle("Crime Rate vs Income by State (2009)", ) +
+  xlab("Average Annual Income") +
+  ylab('Crime Rate per 100000 People') + 
+  scale_color_manual(values = c( "#E7B800", "#00AFBB"), labels=c('HIGH: 5% or more', 'IDEAL: Less than 5%')) +  labs(colour = 'Unemployment') +
+  theme(legend.title = element_text(face = "bold"),
+        plot.background =  element_rect(fill = 'white'),
+        panel.background =element_rect(fill = 'white'),
+        legend.key = element_rect(fill = 'white'),
+        legend.background = element_rect(colour = 'black'),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(colour = 'lightgrey', linetype = 'dotted'),
+        axis.line = element_line(),
+        axis.text = element_text(colour = 'black'),
+        legend.position = 'bottom',
+        plot.title = element_text(color="black", size=16, face="bold.italic"),
+        axis.title.x = element_text(color="black", size=12, face="bold"),
+        axis.title.y = element_text(color="black", size=12, face="bold")) 
+
+plot18
+
+
+plot17 <- ggplot(df2018, aes(x = income, y = crime)) + geom_point(aes(color = employ), size = 4) + 
+  geom_text_repel(
+    aes(label = State),
+    color = "black",
+    size = 9/.pt, # font size 9 pt
+    point.padding = 0.2, 
+    box.padding = 0.6,
+    min.segment.length = 0,
+    max.overlaps = 20,
+    seed = 7654)  + geom_smooth(method  = 'lm', na.rm = TRUE, se = TRUE) +
+  ggtitle("Crime Rate vs Income by State (2018)", ) + labs(colour = 'Unemployment') +
+  xlab("Average Annual Income") +
+  ylab('Crime Rate per 100000 People') +
+  scale_color_manual(values = c( "#E7B800", "#00AFBB"), labels=c('HIGH: 5% or more', 'IDEAL: Less than 5%')) + 
+  theme(legend.title = element_text(face = "bold"),
+        plot.background =  element_rect(fill = 'white'),
+        panel.background =element_rect(fill = 'white'),
+        legend.key = element_rect(fill = 'white'),
+        legend.background = element_rect(colour = 'black'),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(colour = 'lightgrey', linetype = 'dotted'),
+        axis.line = element_line(),
+        axis.text = element_text(colour = 'black'),
+        legend.position = 'bottom',
+        plot.title = element_text(color="black", size=16, face="bold.italic"),
+        axis.title.x = element_text(color="black", size=12, face="bold"),
+        axis.title.y = element_text(color="black", size=12, face="bold")) 
+
+plot17
+
+
+```
+
+# Part 1: The Data
+
+The data consists of average annual income, unemployment rate, and the crime rate (instances of crime per 100,000 people) for each state from the years 2007 to 2018. While I was cleaning the data, I noticed that there were some state data missing particularly from the states New Jersey, Delaware, and Connecticut. I created a few variables to make the data easier to use. First, I calculated the unemployment rate by dividing the number of people unemployed by the population. Second, I created two categorical variables. One ranked the average income as high, medium, or low. The other variable I created categorized the unemployment rate as high, greater than or equal to 5%, or ideal, less than 5%.
+
+# Part 2: Exploratory Data Analysis
+
+I explored data using rudimentary plots for the data to determine interesting relationships to explore in the data. Below are the plots, I used. Based on the below plots, I decided to focus on the relationships among crime rate, income, and unemployment, focusing on the year before the financial crisis in 2008 and then three years afterward, 2009, 2014, and 2018.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+plot4
+plot5
+plot6
+```
+
+# Part 3: The Graphs
+
+The first graph displays the crime rate vs average annual income for the year 2007. The color of the points is determined by whether the unemployment is rated as high or ideal.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+plot19
+```
+
+The second graph displays the data for 2009. One year after the financial crisis hit.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+plot18
+```
+
+The third graph displays the data for 2018, ten years after the initial financial crisis.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+plot17
+```
+
+# Part 4: Conclusion
+
+I prepared this for an academic audience interested in the effects of the 2008 financial crisis on state level economic indicators. I selected colors for for my scatterplots which would be friendly for people who have difficulties discerning color. I chose to not to use color in my panels and background to keep the graphs clean and crisp and also, to save on ink if they were to be printed.

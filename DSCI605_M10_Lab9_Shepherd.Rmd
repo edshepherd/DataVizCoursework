@@ -1,0 +1,75 @@
+---
+title: "Lab_9_Part2"
+author: "Emily Shepherd"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, echo=FALSE,warning=FALSE, include = FALSE}
+#Imports and setup
+setwd("/Users/burrisfaculty/Desktop/DSCode/DSCI605")
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(tidyverse)
+library(dplyr)
+library(rgeos)
+library(ggspatial)
+library(geoR)
+library(tmap)
+library(rgdal)
+library(raster)
+library(grid)
+
+```
+
+# LAB 1
+
+```{r, include=FALSE, echo=FALSE, warning=FALSE}
+
+plot <- read_csv("HARV_PlotLocations.csv")
+head(plot)
+crop <- raster("HARV_chmCrop.tif")
+df <- as.data.frame(crop, xy = TRUE)
+names(plot)
+names(df)
+
+```
+
+```{r, echo = FALSE, warning=FALSE}
+
+ggplot() + 
+  geom_raster(data = df, aes(x = x, y = y, fill = HARV_chmCrop)) +
+  scale_fill_viridis_c(name = 'Canopy Height') + 
+  coord_quickmap() +
+  geom_point(data = plot, aes(x = easting, y = northing, color = elevation)) +
+  scale_color_gradient(low = 'yellow', high = 'red', name = 'Elevation') + 
+  ggtitle("Canopy Height in Harvard Forest", subtitle = "Selected Elevation Points") +
+  xlab("Easting (m)") +
+  ylab('Northing (m)') + 
+  theme_minimal()
+```
+
+# LAB 2
+
+```{r, include=FALSE, echo=FALSE,warning=FALSE}
+state<-st_read("tl_2019_us_state/tl_2019_us_state.shp")
+IN = state[state$STUSPS== "IN",]
+watershed<-st_read("Watersheds_HUC08_2009/WATERSHEDS_HUC08_2009_USDA_IN.shp")
+# 
+tm_shape(watershed) +
+   tm_polygons(col="REGION")
+
+
+mapZH2=mapWatershed <- tm_shape(watershed, is.master = TRUE) + 
+  tm_fill(col = "REGION")  + tm_borders() + tm_shape(IN) + 
+  tm_borders(lwd = 2,col = 'red')  + tm_compass() +   
+  tm_scale_bar() + tm_layout(frame = 'lightblue', title = "Indiana Watershed", title.fontface = 'bold',title.position = c('right', 'top'),legend.position = c('right','top') , panel.show = FALSE, legend.frame = TRUE, bg.color = 'lightblue', inner.margins = c(.02, .02, .02, .25)) 
+  
+```
+
+```{r, echo = FALSE, warning=FALSE}
+
+mapZH2
+```

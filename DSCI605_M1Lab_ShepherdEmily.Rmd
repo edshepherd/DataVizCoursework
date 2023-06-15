@@ -1,0 +1,36 @@
+---
+title: "M2_Lab"
+author: "Emily Shepherd"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I created two different histograms. For the first one, I basically created the same histogram in the data, but with a different variable. I used the built-in histogram feature.
+
+For the second histogram, I used the data from the lab. I changed the binwidth to 2. I also changed the colors of bars. The outline is now a navy blue and the fill is gray. Additionally, I decreased the transparency. Lastly, I loaded the ggthemes library and used the theme_economist to give it a more professional polish.
+
+```{r, echo = TRUE, warning=FALSE}
+setwd("/Users/burrisfaculty/Desktop/DSCode/DSCI605")
+library(ggplot2)
+library(ggthemes)
+soc = read.csv(file = 'soil organic carbon.csv')
+x5cm <- soc[,2]
+x510cm <- soc[,3]
+hist(x510cm)
+
+ggplot(data = NULL, aes(x5cm)) + 
+  geom_histogram(breaks = seq(0, max(x5cm), by = 2),
+                 col = 'navy',
+                 fill = 'gray',
+                 alpha = 0.6) + 
+  labs(title = 'Histogram for SOC', x = 'SOC(%)', y = 'Count') +
+  xlim(c(0, max(x5cm))) + 
+  theme_economist()
+```
